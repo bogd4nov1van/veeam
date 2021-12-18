@@ -92,7 +92,7 @@ namespace veeam.Converter
             }
 
             // конец очереди
-            parallelHashСonveyor.AddNextBlock(null);
+            parallelHashСonveyor.SetEnding();
         }
 
         private void toOutput(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)

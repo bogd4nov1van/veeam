@@ -1,32 +1,31 @@
-﻿using System.Collections.Concurrent;
-using veeam.Exceptions;
+﻿using veeam.Exceptions;
 
 namespace veeam.Converter
 {
     public class ParallelHashСonveyor
     {
-        private List<HashСonveyor> hashСonveyors { get; }
-        private CancellationTokenSource cancellationTokenSource;
-        private List<Thread> threads;
-        private int currentBlockIndex = -1;
-        private int currentHashIndex = -1;
+        private List<HashСonveyor> _hashСonveyors { get; }
+        private CancellationTokenSource _cancellationTokenSource;
+        private List<Thread> _threads;
+        private int _currentBlockIndex = -1;
+        private int _currentHashIndex = -1;
         private int getBlockIndex()
         {
-            currentBlockIndex++;
+            _currentBlockIndex++;
 
-            if (currentBlockIndex >= hashСonveyors.Count)
-                currentBlockIndex = 0;
+            if (_currentBlockIndex >= _hashСonveyors.Count)
+                _currentBlockIndex = 0;
 
-            return currentBlockIndex;
+            return _currentBlockIndex;
         }
         private int getHashIndex()
         {
-            currentHashIndex++;
+            _currentHashIndex++;
 
-            if (currentHashIndex >= hashСonveyors.Count)
-                currentHashIndex = 0;
+            if (_currentHashIndex >= _hashСonveyors.Count)
+                _currentHashIndex = 0;
 
-            return currentHashIndex;
+            return _currentHashIndex;
         }
 
         public ParallelHashСonveyor(int countThread, CancellationTokenSource cancellationTokenSource)
@@ -36,10 +35,10 @@ namespace veeam.Converter
                 throw new ArgumentNullException(nameof(cancellationTokenSource));
             }
 
-            this.cancellationTokenSource = cancellationTokenSource;
+            _cancellationTokenSource = cancellationTokenSource;
 
-            threads = new List<Thread>();
-            hashСonveyors = new List<HashСonveyor>();
+            _threads = new List<Thread>();
+            _hashСonveyors = new List<HashСonveyor>();
 
             for (int i = countThread; i > 0; i--)
             {
@@ -49,24 +48,28 @@ namespace veeam.Converter
 
                 thread.Name = $"HashСonveyor # {i}"; 
 
-                threads.Add(thread);
+                _threads.Add(thread);
 
-                hashСonveyors.Add(hashСonveyor);
+                _hashСonveyors.Add(hashСonveyor);
             }
         }
 
         public void StartThreads()
         {
-            foreach(var thread in threads)
+            foreach(var thread in _threads)
                 thread.Start();
         }
         
-
-        public void AddNextBlock(byte[]? block)
+        public void SetEnding()
         {
-            var currIndex = getBlockIndex();
+            AddNextBlock(null);
+        }
 
-            hashСonveyors[currIndex].Enqueue(block);
+        public void AddNextBlock(byte[] block)
+        {
+            var currBlockIndex = getBlockIndex();
+
+            _hashСonveyors[currBlockIndex].Enqueue(block);
         }
 
         /// <summary>
@@ -74,18 +77,18 @@ namespace veeam.Converter
         /// </summary>
         public string GetNextHash()
         {
-            var currIndex = getHashIndex();
+            var currHashIndex = getHashIndex();
 
             string? hash;
 
-            while (!cancellationTokenSource.IsCancellationRequested)
+            while (!_cancellationTokenSource.IsCancellationRequested)
             {
-                if (hashСonveyors[currIndex].TryDequeue(out hash))
+                if (_hashСonveyors[currHashIndex].TryDequeue(out hash))
                 {
                     // конец очереди
                     if(hash == null)
                     {
-                        cancellationTokenSource.Cancel();
+                        _cancellationTokenSource.Cancel();
                         break;
                     }
 
