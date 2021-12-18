@@ -38,17 +38,28 @@ namespace veeam.Converter
             _hasher = hasher;
         }
 
-        public IEnumerable<string> Convert()
+        public void Convert()
         {
             using (var cancellationTokenSource = new CancellationTokenSource())
             {
                 var parallelHashСonveyor = new ParallelHashСonveyor(_hasher, _countThread, cancellationTokenSource);
 
-                parallelHashСonveyor.StartThreads();
+                parallelHashСonveyor.Start();
 
                 readBlocksToHashing(parallelHashСonveyor, cancellationTokenSource);
-                
-                return getHashs(parallelHashСonveyor, cancellationTokenSource);
+            }
+        }
+
+        public IEnumerable<string> GetHashs(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
+        {
+            while (!cancellationTokenSource.IsCancellationRequested)
+            {
+                var hashResult = parallelHashСonveyor.GetNextHash();
+
+                if (hashResult.IsExists)
+                {
+                    yield return hashResult.Hash;
+                }
             }
         }
 
@@ -68,19 +79,6 @@ namespace veeam.Converter
 
             // конец очереди
             parallelHashСonveyor.SetEnding();
-        }
-
-        private IEnumerable<string> getHashs(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
-        {
-            while (!cancellationTokenSource.IsCancellationRequested)
-            {
-                var hashResult = parallelHashСonveyor.GetNextHash();
-
-                if (hashResult.IsExists)
-                {
-                    yield return hashResult.Hash;
-                }
-            }
         }
     }
 }
