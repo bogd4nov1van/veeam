@@ -1,6 +1,4 @@
-﻿using veeam.Exceptions;
-
-namespace veeam.Converter
+﻿namespace veeam.Converter
 {
     public class ParallelHashСonveyor
     {

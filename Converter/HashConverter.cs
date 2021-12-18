@@ -1,5 +1,3 @@
-using veeam.Exceptions;
-
 namespace veeam.Converter
 {
     public class HashConverter
