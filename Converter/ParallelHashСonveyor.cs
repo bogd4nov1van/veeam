@@ -73,9 +73,9 @@ namespace veeam.Converter
         }
 
         /// <summary>
-        /// Возвращает следующий хеш, или исключение EndСonveyorException, в случае конца очереди
+        /// Возвращает true и хеш, или false и null в случае конца очереди
         /// </summary>
-        public string GetNextHash()
+        public (bool IsExists, string? Hash) GetNextHash()
         {
             var currHashIndex = getHashIndex();
 
@@ -89,10 +89,10 @@ namespace veeam.Converter
                     if(hash == null)
                     {
                         _cancellationTokenSource.Cancel();
-                        break;
+                        return (false, null);
                     }
 
-                    return hash;
+                    return (true, hash);
                 }
                 else
                 {
@@ -100,7 +100,7 @@ namespace veeam.Converter
                 }
             }
 
-            throw new EndСonveyorException();
+            return (false, null);
         }
     }
 }

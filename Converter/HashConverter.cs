@@ -99,10 +99,14 @@ namespace veeam.Converter
         {
             while (!cancellationTokenSource.IsCancellationRequested)
             {
-                var hash = parallelHashСonveyor.GetNextHash();
-                var line = $"{++numberHash}: {hash}";
+                var hashResult = parallelHashСonveyor.GetNextHash();
 
-                outputStream(line);
+                if(hashResult.IsExists)
+                {
+                    var line = $"{++numberHash}: {hashResult.Hash}";
+
+                    outputStream(line);
+                }
             }
         }
 
@@ -117,10 +121,6 @@ namespace veeam.Converter
                 catch (ArgumentException ex)
                 {
                     Console.WriteLine(ex.Message);
-                }
-                catch (EndСonveyorException)
-                {
-                    outputStream("Конец обработки");
                 }
                 catch (Exception ex)
                 {
