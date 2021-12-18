@@ -1,4 +1,6 @@
-﻿namespace veeam.Converter
+﻿using veeam.Interfaces;
+
+namespace veeam.Converter
 {
     public class ParallelHashСonveyor
     {
@@ -26,8 +28,13 @@
             return _currentHashIndex;
         }
 
-        public ParallelHashСonveyor(int countThread, CancellationTokenSource cancellationTokenSource)
+        public ParallelHashСonveyor(IHasher hasher, int countThread, CancellationTokenSource cancellationTokenSource)
         {
+            if (hasher is null)
+            {
+                throw new ArgumentNullException(nameof(hasher));
+            }
+
             if (cancellationTokenSource is null)
             {
                 throw new ArgumentNullException(nameof(cancellationTokenSource));
@@ -40,7 +47,7 @@
 
             for (int i = countThread; i > 0; i--)
             {
-                var hashСonveyor = new HashСonveyor();
+                var hashСonveyor = new HashСonveyor(hasher);
 
                 var thread = new Thread(() => hashСonveyor.Start(cancellationTokenSource));
 

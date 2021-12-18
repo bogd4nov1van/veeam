@@ -1,22 +1,24 @@
+using veeam.Interfaces;
+
 namespace veeam.Converter
 {
     public class HashConverter
     {
-        private readonly string filePath;
+        private readonly IBlockReader _reader;
         private readonly int sizeBlock;
         private readonly Action<string> outputStream;
         private int numberHash = 0;
 
-        public HashConverter(string filePath, int sizeBlock, Action<string> outputStream)
-        {
-            if (filePath is null)
-            {
-                throw new ArgumentNullException(nameof(filePath));
-            }
-
+        public HashConverter(IBlockReader reader, int sizeBlock, Action<string> outputStream)
+        {            
             if (outputStream is null)
             {
                 throw new ArgumentNullException(nameof(outputStream));
+            }
+
+            if (reader is null)
+            {
+                throw new ArgumentNullException(nameof(reader));
             }
 
             if (sizeBlock < 1)
@@ -24,13 +26,14 @@ namespace veeam.Converter
                 throw new ArgumentException("Размер блока не может быть меньше 1");
             }
 
-            this.filePath = filePath;
+            _reader = reader;
             this.sizeBlock = sizeBlock;
             this.outputStream = outputStream;
         }
 
         public void Convert()
         {
+            using (var hasher = new HasherSHA256())
             using (var cancellationTokenSource = new CancellationTokenSource())
             {
                 try
@@ -42,7 +45,7 @@ namespace veeam.Converter
                     if (countParallelConveyor < 1)
                         countParallelConveyor = 1;
 
-                    var parallelHashСonveyor = new ParallelHashСonveyor(countParallelConveyor, cancellationTokenSource);
+                    var parallelHashСonveyor = new ParallelHashСonveyor(hasher, countParallelConveyor, cancellationTokenSource);
 
                     var outputThread = createThread(() => toOutput(parallelHashСonveyor, cancellationTokenSource), cancellationTokenSource);
 
@@ -69,24 +72,16 @@ namespace veeam.Converter
 
         private void writeBlocks(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
         {
-            if (!File.Exists(filePath))
+            var block = _reader.ReadBytes(sizeBlock);
+
+            while (block.Length > 0)
             {
-                throw new ArgumentException($"Файл {filePath} не существует.");
-            }
+                if (cancellationTokenSource.IsCancellationRequested)
+                    return;
 
-            using (var stream = new BinaryReader(File.OpenRead(filePath)))
-            {
-                var block = stream.ReadBytes(sizeBlock);
+                parallelHashСonveyor.AddNextBlock(block);
 
-                while (block.Length > 0)
-                {
-                    if (cancellationTokenSource.IsCancellationRequested)
-                        return;
-
-                    parallelHashСonveyor.AddNextBlock(block);
-
-                    block = stream.ReadBytes(sizeBlock);
-                }
+                block = _reader.ReadBytes(sizeBlock);
             }
 
             // конец очереди
@@ -99,7 +94,7 @@ namespace veeam.Converter
             {
                 var hashResult = parallelHashСonveyor.GetNextHash();
 
-                if(hashResult.IsExists)
+                if (hashResult.IsExists)
                 {
                     var line = $"{++numberHash}: {hashResult.Hash}";
 

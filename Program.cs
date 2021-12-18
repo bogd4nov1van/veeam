@@ -10,7 +10,7 @@ namespace veeam
         {
             Thread.CurrentThread.Name = "Main";
             // return runFromConsole(args);
-             return runManual();
+            return runManual();
         }
 
         private static int runManual()
@@ -46,15 +46,19 @@ namespace veeam
         {
             try
             {
-                var HashConverter = new HashConverter(path,
-                                                      size,
-                                                      Console.WriteLine);
+                
+                using (var reader = new FileBlockReader(path))
+                {
+                    var hashConverter = new HashConverter(reader,
+                                                          size,
+                                                          Console.WriteLine);
 
-                HashConverter.Convert();
+                    hashConverter.Convert();
 
-                return 0;
+                    return 0;
+                }
             }
-            catch(ArgumentException ex)
+            catch (ArgumentException ex)
             {
                 Console.WriteLine(ex.Message);
                 return -1;
