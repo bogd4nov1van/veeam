@@ -44,16 +44,23 @@ namespace veeam
 
         private static int Convert(string path, int size)
         {
+            var countThread = Environment.ProcessorCount - 1;
+
             try
-            {
-                
+            {   
+                using (var hasher = new HasherSHA256())
                 using (var reader = new FileBlockReader(path))
                 {
-                    var hashConverter = new HashConverter(reader,
-                                                          size,
-                                                          Console.WriteLine);
+                    var hashConverter = new HashConverter(hasher, reader, countThread, size);
 
-                    hashConverter.Convert();
+                    var hashNumber = 0;
+
+                    foreach(var hash in hashConverter.Convert())
+                    {
+                        var hashWithNumner = $"{++hashNumber}: {hash}";
+                        
+                        Console.WriteLine(hashWithNumner);
+                    }
 
                     return 0;
                 }

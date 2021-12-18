@@ -5,15 +5,16 @@ namespace veeam.Converter
     public class HashConverter
     {
         private readonly IBlockReader _reader;
-        private readonly int sizeBlock;
-        private readonly Action<string> outputStream;
-        private int numberHash = 0;
+        private readonly int _countThread;
+        private readonly int _sizeBlock;
+        private readonly IHasher _hasher;
+        private int _numberHash = 0;
 
-        public HashConverter(IBlockReader reader, int sizeBlock, Action<string> outputStream)
-        {            
-            if (outputStream is null)
+        public HashConverter(IHasher hasher, IBlockReader reader, int countThread, int sizeBlock)
+        {
+            if (hasher is null)
             {
-                throw new ArgumentNullException(nameof(outputStream));
+                throw new ArgumentNullException(nameof(hasher));
             }
 
             if (reader is null)
@@ -26,53 +27,34 @@ namespace veeam.Converter
                 throw new ArgumentException("Размер блока не может быть меньше 1");
             }
 
+            if(countThread < 1)
+            {
+                throw new ArgumentException("Количество потоков не может быть меньше 1");
+            }
+
             _reader = reader;
-            this.sizeBlock = sizeBlock;
-            this.outputStream = outputStream;
+            _countThread = countThread;
+            _sizeBlock = sizeBlock;
+            _hasher = hasher;
         }
 
-        public void Convert()
+        public IEnumerable<string> Convert()
         {
-            using (var hasher = new HasherSHA256())
             using (var cancellationTokenSource = new CancellationTokenSource())
             {
-                try
-                {
-                    var countThreads = Environment.ProcessorCount;
-                    // 1 под запись, 1 под чтение, остальные под хеширование
-                    var countParallelConveyor = countThreads - 3;
+                var parallelHashСonveyor = new ParallelHashСonveyor(_hasher, _countThread, cancellationTokenSource);
 
-                    if (countParallelConveyor < 1)
-                        countParallelConveyor = 1;
+                parallelHashСonveyor.StartThreads();
 
-                    var parallelHashСonveyor = new ParallelHashСonveyor(hasher, countParallelConveyor, cancellationTokenSource);
-
-                    var outputThread = createThread(() => toOutput(parallelHashСonveyor, cancellationTokenSource), cancellationTokenSource);
-
-                    var start = DateTime.Now;
-
-                    parallelHashСonveyor.StartThreads();
-
-                    outputThread.Start();
-
-                    writeBlocks(parallelHashСonveyor, cancellationTokenSource);
-
-                    outputThread.Join();
-
-                    var end = DateTime.Now;
-
-                    Console.WriteLine((end - start).TotalSeconds);
-                }
-                catch (Exception ex)
-                {
-                    outputStream(ex.ToString());
-                }
+                readBlocksToHashing(parallelHashСonveyor, cancellationTokenSource);
+                
+                return getHashs(parallelHashСonveyor, cancellationTokenSource);
             }
         }
 
-        private void writeBlocks(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
+        private void readBlocksToHashing(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
         {
-            var block = _reader.ReadBytes(sizeBlock);
+            var block = _reader.ReadBytes(_sizeBlock);
 
             while (block.Length > 0)
             {
@@ -81,14 +63,14 @@ namespace veeam.Converter
 
                 parallelHashСonveyor.AddNextBlock(block);
 
-                block = _reader.ReadBytes(sizeBlock);
+                block = _reader.ReadBytes(_sizeBlock);
             }
 
             // конец очереди
             parallelHashСonveyor.SetEnding();
         }
 
-        private void toOutput(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
+        private IEnumerable<string> getHashs(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
             {
@@ -96,30 +78,9 @@ namespace veeam.Converter
 
                 if (hashResult.IsExists)
                 {
-                    var line = $"{++numberHash}: {hashResult.Hash}";
-
-                    outputStream(line);
+                    yield return hashResult.Hash;
                 }
             }
-        }
-
-        private Thread createThread(Action action, CancellationTokenSource cancellationTokenSource)
-        {
-            return new Thread(() =>
-            {
-                try
-                {
-                    action();
-                }
-                catch (ArgumentException ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    outputStream(ex.ToString());
-                }
-            });
         }
     }
 }
