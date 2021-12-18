@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using veeam.Extensions;
 
 namespace veeam.Converter
 {
@@ -21,25 +20,29 @@ namespace veeam.Converter
             {
                 throw new ArgumentNullException(nameof(cancellationTokenSource));
             }
-
-            while (!cancellationTokenSource.IsCancellationRequested)
+            using (var hasher = new HasherSHA256())
             {
-                byte[]? block;
-
-                if (Blocks.TryDequeue(out block))
+                while (!cancellationTokenSource.IsCancellationRequested)
                 {
-                    //конец очереди
-                    if(block == null)
+                    byte[]? block;
+
+                    if (Blocks.TryDequeue(out block))
                     {
-                        BlockHashs.Enqueue(null);
-                        return;
-                    }
+                        //конец очереди
+                        if (block == null)
+                        {
+                            BlockHashs.Enqueue(null);
+                            return;
+                        }
 
-                    BlockHashs.Enqueue(block.ToHash());
-                }
-                else
-                {
-                    Thread.Sleep(0);
+                        var hash = hasher.ToHash(block);
+
+                        BlockHashs.Enqueue(hash);
+                    }
+                    else
+                    {
+                        Thread.Sleep(0);
+                    }
                 }
             }
         }
