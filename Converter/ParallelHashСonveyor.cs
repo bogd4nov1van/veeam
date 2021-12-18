@@ -59,12 +59,18 @@ namespace veeam.Converter
             }
         }
 
-        public void StartThreads()
+        public void Start()
         {
             foreach(var thread in _threads)
                 thread.Start();
         }
         
+        public void Wait()
+        {
+            foreach(var thread in _threads)
+                thread.Join();
+        }
+
         public void SetEnding()
         {
             AddNextBlock(null);

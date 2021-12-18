@@ -53,14 +53,15 @@ namespace veeam
                 {
                     var hashConverter = new HashConverter(hasher, reader, countThread, size);
 
-                    var hashNumber = 0;
+                    // var hashNumber = 0;
 
-                    foreach(var hash in hashConverter.Convert())
-                    {
-                        var hashWithNumner = $"{++hashNumber}: {hash}";
+                    hashConverter.Convert();
+
+                    // {
+                    //     var hashWithNumner = $"{++hashNumber}: {hash}";
                         
-                        Console.WriteLine(hashWithNumner);
-                    }
+                    //     Console.WriteLine(hashWithNumner);
+                    // }
 
                     return 0;
                 }
