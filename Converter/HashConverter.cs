@@ -1,14 +1,14 @@
-using veeam.Interfaces;
+using veeam.BlockReader;
+using veeam.Hasher;
 
 namespace veeam.Converter
 {
-    public class HashConverter
+    public class HashConverter : IDisposable
     {
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly ParallelHashСonveyor _parallelHashСonveyor;
         private readonly IBlockReader _reader;
-        private readonly int _countThread;
         private readonly int _sizeBlock;
-        private readonly IHasher _hasher;
-        private int _numberHash = 0;
 
         public HashConverter(IHasher hasher, IBlockReader reader, int countThread, int sizeBlock)
         {
@@ -27,58 +27,94 @@ namespace veeam.Converter
                 throw new ArgumentException("Размер блока не может быть меньше 1");
             }
 
-            if(countThread < 1)
+            if (countThread < 1)
             {
                 throw new ArgumentException("Количество потоков не может быть меньше 1");
             }
 
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            // 1 тред на чтение из IBlockReader
+            var countParallelHashing = countThread - 1;
+
+            _parallelHashСonveyor = new ParallelHashСonveyor(hasher, countParallelHashing, _cancellationTokenSource);
+
             _reader = reader;
-            _countThread = countThread;
             _sizeBlock = sizeBlock;
-            _hasher = hasher;
         }
 
-        public void Convert()
+        public IEnumerable<string> Convert()
         {
-            using (var cancellationTokenSource = new CancellationTokenSource())
+            try
             {
-                var parallelHashСonveyor = new ParallelHashСonveyor(_hasher, _countThread, cancellationTokenSource);
+                _parallelHashСonveyor.StartAsync();
 
-                parallelHashСonveyor.Start();
+                readBlockAsync();
 
-                readBlocksToHashing(parallelHashСonveyor, cancellationTokenSource);
+                return getHashs();
+            }
+            catch (System.Exception)
+            {
+                _cancellationTokenSource.Cancel();
+                throw;
             }
         }
 
-        public IEnumerable<string> GetHashs(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
+        private IEnumerable<string> getHashs()
         {
-            while (!cancellationTokenSource.IsCancellationRequested)
+            while (!_cancellationTokenSource.IsCancellationRequested)
             {
-                var hashResult = parallelHashСonveyor.GetNextHash();
+                var hashResult = _parallelHashСonveyor.GetNextHash();
 
-                if (hashResult.IsExists)
+                if (!hashResult.IsEnd)
                 {
                     yield return hashResult.Hash;
+                }
+                else
+                {
+                    break;
                 }
             }
         }
 
-        private void readBlocksToHashing(ParallelHashСonveyor parallelHashСonveyor, CancellationTokenSource cancellationTokenSource)
+        private void readBlockAsync()
         {
-            var block = _reader.ReadBytes(_sizeBlock);
+            var thread = new Thread(readBlocks);
 
-            while (block.Length > 0)
+            thread.Start();
+        }
+
+        private void readBlocks()
+        {
+            try
             {
-                if (cancellationTokenSource.IsCancellationRequested)
-                    return;
+                var block = _reader.ReadBytes(_sizeBlock);
 
-                parallelHashСonveyor.AddNextBlock(block);
+                int i = 50;
 
-                block = _reader.ReadBytes(_sizeBlock);
+                while (block.Length > 0)
+                {
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                        return;
+
+                    _parallelHashСonveyor.AddNextBlock(block);
+
+                    block = _reader.ReadBytes(_sizeBlock);
+                }
+
+                // конец очереди
+                _parallelHashСonveyor.SetEnding();
             }
+            catch (System.Exception)
+            {
+                _cancellationTokenSource.Cancel();
+                throw;
+            }
+        }
 
-            // конец очереди
-            parallelHashСonveyor.SetEnding();
+        public void Dispose()
+        {
+            _cancellationTokenSource.Dispose();
         }
     }
 }

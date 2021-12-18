@@ -1,5 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using veeam.Interfaces;
+using veeam.Hasher;
 
 namespace veeam.Converter
 {
@@ -8,9 +8,11 @@ namespace veeam.Converter
         private readonly IHasher _hasher;
         public readonly ConcurrentQueue<byte[]?> _blocks;
         public readonly ConcurrentQueue<string?> _blockHashs;
+        private CancellationTokenSource _cancellationTokenSource;
 
-        public HashСonveyor(IHasher hasher)
+        public HashСonveyor(IHasher hasher, CancellationTokenSource cancellationTokenSource)
         {
+            _cancellationTokenSource = cancellationTokenSource ?? throw new ArgumentNullException(nameof(cancellationTokenSource));
             _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
             _blocks = new ConcurrentQueue<byte[]?>();
             _blockHashs = new ConcurrentQueue<string?>();
@@ -26,33 +28,40 @@ namespace veeam.Converter
             return _blockHashs.TryDequeue(out hash);
         }
 
-        public void Start(CancellationTokenSource cancellationTokenSource)
+        public void Start()
         {
-            if (cancellationTokenSource is null)
+            try
             {
-                throw new ArgumentNullException(nameof(cancellationTokenSource));
-            }
-            while (!cancellationTokenSource.IsCancellationRequested)
-            {
-                byte[]? block;
-
-                if (_blocks.TryDequeue(out block))
+                while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    //конец очереди
-                    if (block == null)
+                    byte[]? block;
+
+                    if (_blocks.TryDequeue(out block))
                     {
-                        _blockHashs.Enqueue(null);
-                        return;
+                        // if(Thread.CurrentThread.Name == "3")
+                        //     throw new Exception("test");
+                        
+                        //конец очереди
+                        if (block == null)
+                        {
+                            _blockHashs.Enqueue(null);
+                            return;
+                        }
+
+                        var hash = _hasher.ToHash(block);
+
+                        _blockHashs.Enqueue(hash);
                     }
-
-                    var hash = _hasher.ToHash(block);
-
-                    _blockHashs.Enqueue(hash);
+                    else
+                    {
+                        Thread.Sleep(0);
+                    }
                 }
-                else
-                {
-                    Thread.Sleep(0);
-                }
+            }
+            catch (Exception)
+            {
+                _cancellationTokenSource.Cancel();
+                throw;
             }
         }
     }

@@ -1,4 +1,4 @@
-namespace veeam.Interfaces
+namespace veeam.BlockReader
 {
     public interface IBlockReader
     {

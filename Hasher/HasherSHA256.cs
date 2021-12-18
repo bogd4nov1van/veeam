@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using veeam.Interfaces;
+using veeam.Hasher;
 
 namespace veeam.Converter
 {

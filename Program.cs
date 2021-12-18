@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Diagnostics;
 using veeam.Converter;
 
 namespace veeam
@@ -8,7 +9,6 @@ namespace veeam
     {
         public static int Main(string[] args)
         {
-            Thread.CurrentThread.Name = "Main";
             // return runFromConsole(args);
             return runManual();
         }
@@ -44,6 +44,7 @@ namespace veeam
 
         private static int Convert(string path, int size)
         {
+            // 1 под текущий поток, для вывода
             var countThread = Environment.ProcessorCount - 1;
 
             try
@@ -53,15 +54,23 @@ namespace veeam
                 {
                     var hashConverter = new HashConverter(hasher, reader, countThread, size);
 
-                    // var hashNumber = 0;
+                    var hashNumber = 0;
 
-                    hashConverter.Convert();
+                    var stopWatch = new Stopwatch();
+                    stopWatch.Start();
 
-                    // {
-                    //     var hashWithNumner = $"{++hashNumber}: {hash}";
+                    foreach(var hash in hashConverter.Convert())
+                    {
+                        {
+                            var hashWithNumner = $"{++hashNumber}: {hash}";
                         
-                    //     Console.WriteLine(hashWithNumner);
-                    // }
+                            Console.WriteLine(hashWithNumner);
+                        }
+                    }
+
+                    stopWatch.Stop();
+
+                    Console.WriteLine("Общее время: " + stopWatch.Elapsed);
 
                     return 0;
                 }
