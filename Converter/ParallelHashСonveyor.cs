@@ -43,7 +43,7 @@ namespace veeam.Converter
 
             for (int i = countThread; i > 0; i--)
             {
-                var hashСonveyor = new HashСonveyor(new ConcurrentQueue<byte[]?>(), new ConcurrentQueue<string?>());
+                var hashСonveyor = new HashСonveyor();
 
                 var thread = new Thread(() => hashСonveyor.Start(cancellationTokenSource));
 
@@ -66,7 +66,7 @@ namespace veeam.Converter
         {
             var currIndex = getBlockIndex();
 
-            hashСonveyors[currIndex].Blocks.Enqueue(block);
+            hashСonveyors[currIndex].Enqueue(block);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace veeam.Converter
 
             while (!cancellationTokenSource.IsCancellationRequested)
             {
-                if (hashСonveyors[currIndex].BlockHashs.TryDequeue(out hash))
+                if (hashСonveyors[currIndex].TryDequeue(out hash))
                 {
                     // конец очереди
                     if(hash == null)
