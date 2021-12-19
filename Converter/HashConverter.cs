@@ -80,7 +80,7 @@ namespace veeam.Converter
         private void readBlockAsync()
         {
             var thread = new Thread(readBlocks);
-
+            thread.Name = "Read blocks";
             thread.Start();
         }
 
@@ -89,8 +89,6 @@ namespace veeam.Converter
             try
             {
                 var block = _reader.ReadBytes(_sizeBlock);
-
-                int i = 50;
 
                 while (block.Length > 0)
                 {

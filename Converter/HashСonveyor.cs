@@ -38,7 +38,7 @@ namespace veeam.Converter
 
                     if (_blocks.TryDequeue(out block))
                     {
-                        // if(Thread.CurrentThread.Name == "3")
+                        // if(Thread.CurrentThread.Name == "HashСonveyor 3")
                         //     throw new Exception("test");
                         
                         //конец очереди

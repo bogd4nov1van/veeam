@@ -47,7 +47,8 @@ namespace veeam.Converter
                 _hashСonveyors.Add(hashСonveyor);
 
                 var hashСonveyorThread = new Thread(new ThreadStart(hashСonveyor.Start));
-                hashСonveyorThread.Name = i.ToString();
+                hashСonveyorThread.Name = $"HashСonveyor {i}";
+                
                 _threads.Add(hashСonveyorThread);
             }
         }

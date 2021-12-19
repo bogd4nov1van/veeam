@@ -9,16 +9,26 @@ namespace veeam
     {
         public static int Main(string[] args)
         {
+            Thread.CurrentThread.Name = "Main";
             // return runFromConsole(args);
             return runManual();
         }
 
         private static int runManual()
         {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+            
             var sizeBlock = 1024 * 1024 * 1024;
             var path = "/Users/ivanbogdanov/videos/test.txt";
 
-            return Convert(path, sizeBlock);
+            var result = Convert(path, sizeBlock);
+
+            stopWatch.Stop();
+            
+            Console.WriteLine($"Время выполнения: {stopWatch.Elapsed}");
+
+            return result;
         }
 
         private static int runFromConsole(string[] args)
@@ -56,9 +66,6 @@ namespace veeam
 
                     var hashNumber = 0;
 
-                    var stopWatch = new Stopwatch();
-                    stopWatch.Start();
-
                     foreach(var hash in hashConverter.Convert())
                     {
                         {
@@ -67,10 +74,6 @@ namespace veeam
                             Console.WriteLine(hashWithNumner);
                         }
                     }
-
-                    stopWatch.Stop();
-
-                    Console.WriteLine("Общее время: " + stopWatch.Elapsed);
 
                     return 0;
                 }
