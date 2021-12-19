@@ -79,9 +79,9 @@ namespace veeam.Converter
 
         private void readBlockAsync()
         {
-            var thread = new Thread(readBlocks);
-            thread.Name = "Read blocks";
-            thread.Start();
+            var readBlockThread = new Thread(readBlocks);
+            readBlockThread.Name = "Read blocks";
+            readBlockThread.Start();
         }
 
         private void readBlocks()
